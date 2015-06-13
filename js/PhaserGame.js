@@ -2,9 +2,33 @@ window.onload = function () {
     'use strict';
     var game, w, h, paddleLeft, paddleRight, paddles, wallTop, wallBottom, walls,
         goalLeft, goalRight, goals, ball,
-        wKey, sKey, upKey, downKey;
+        scoreLeft, scoreRight, scoreDisplay, scoreStyle,
+        instructionDisplay, instructionStyle,
+        wKey, sKey, upKey, downKey, spacebarKey,
+        RNG_GOD, paused;
+    
+    function random(MIN, MAX) {
+        var number = RNG_GOD.integerInRange(MIN, MAX);
+        if (RNG_GOD.integerInRange(0, 1)) {
+            number = number * -1;
+        }
+        return number;
+    }
+    
+    function togglePause() {
+        paused = !paused;
+        game.physics.arcade.isPaused = paused;
+        if (!paused) {
+            instructionDisplay.text = "";
+        } else {
+            instructionDisplay = game.add.text(w / 2, h / 1.5, "Spacebar:pause/unpause W:LeftUp S:LeftDown UP:RightUp DOWN:RightDown", instructionStyle);
+            instructionDisplay.anchor.setTo(0.5);
+        }
+    }
+    
     w = 640;
     h = 480;
+    
     game = new Phaser.Game(w, h, Phaser.AUTO, '', { preload: preload, create:       create, update: update });
 
     function preload() {
@@ -15,6 +39,8 @@ window.onload = function () {
     }
 
     function create() {
+        RNG_GOD = new Phaser.RandomDataGenerator(1337);
+        
         game.physics.startSystem(Phaser.Physics.ARCADE);
         game.stage.backgroundColor = "#000000";
         
@@ -22,18 +48,7 @@ window.onload = function () {
         sKey = game.input.keyboard.addKey(Phaser.Keyboard.S);
         upKey = game.input.keyboard.addKey(Phaser.Keyboard.UP);
         downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
-        
-        paddles = game.add.group();
-        paddles.enableBody = true;
-        
-        paddleLeft = game.add.sprite(40, h / 2, 'paddle');
-        paddleLeft.anchor.setTo(0.5);
-        
-        paddleRight = game.add.sprite(w - 40, h / 2, 'paddle');
-        paddleRight.anchor.setTo(0.5);
-        
-        paddles.add(paddleLeft);
-        paddles.add(paddleRight);
+        spacebarKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
         
         walls = game.add.group();
         walls.enableBody = true;
@@ -47,6 +62,19 @@ window.onload = function () {
         walls.add(wallTop);
         walls.add(wallBottom);
         walls.setAll('body.immovable', true);
+        
+        paddles = game.add.group();
+        paddles.enableBody = true;
+        
+        paddleLeft = game.add.sprite(40, h / 2, 'paddle');
+        paddleLeft.anchor.setTo(0.5);
+        
+        paddleRight = game.add.sprite(w - 40, h / 2, 'paddle');
+        paddleRight.anchor.setTo(0.5);
+        
+        paddles.add(paddleLeft);
+        paddles.add(paddleRight);
+        paddles.setAll('body.immovable', true);
         
         goals = game.add.group();
         goals.enableBody = true;
@@ -63,28 +91,77 @@ window.onload = function () {
         
         ball = game.add.sprite(w / 2, h / 2, 'ball');
         ball.anchor.setTo(0.5);
+        ball.enableBody = true;
+        game.physics.arcade.enable(ball);
+        ball.body.bounce.set(1);
+        ball.body.velocity.y = random(25, 100);
+        ball.body.velocity.x = random(200, 300);
         
+        scoreRight = 0;
+        scoreLeft = 0;
+        scoreStyle = { font: "32px Impact", fill: "#ffffff", align: "center" };
+        scoreDisplay = game.add.text(w / 2, 32, scoreLeft + "|" + scoreRight, scoreStyle);
+        scoreDisplay.anchor.setTo(0.5);
+        
+        
+        instructionStyle = { font: "18px Impact", fill: "#ffffff", align: "center" };
+        instructionDisplay = game.add.text(w / 2, h / 1.5, "Spacebar:pause/unpause W:LeftUp S:LeftDown UP:RightUp DOWN:RightDown", instructionStyle);
+        instructionDisplay.anchor.setTo(0.5);
+        
+        paused = true;
+        game.physics.arcade.isPaused = true;
+        
+        spacebarKey.onDown.add(function () {
+            togglePause();
+        });
+    }
+    
+    function score(ball, goal) {
+        if (goal.body.position.x == 0) {
+            scoreRight += 1;
+        } else if (goal.body.position.x == 624) {
+            scoreLeft += 1;
+        }
+        ball.body.position.x = w / 2;
+        ball.body.position.y = h / 2;
+        ball.body.velocity.y = random(25, 100);
+        ball.body.velocity.x = random(200, 300);
+        
+        scoreDisplay.text = scoreLeft + "|" + scoreRight;
     }
 
     function update() {
-        game.physics.arcade.collide(paddles, walls);
         
-        paddles.setAll('body.velocity.y', 0);
+        if (!paused) {
+            game.physics.arcade.overlap(ball, goals, score, null, this);
+            game.physics.arcade.collide(paddles, ball);
+            game.physics.arcade.collide(ball, walls);
+            game.physics.arcade.collide(ball, goals);
+            game.physics.arcade.collide(ball, paddles);
         
-        if (wKey.isDown && !sKey.isDown) {
-            paddleLeft.body.velocity.y = -240;
-        }
+            paddles.setAll('body.velocity.y', 0);
         
-        if (sKey.isDown && !wKey.isDown) {
-            paddleLeft.body.velocity.y = 240;
-        }
+            if (wKey.isDown && !sKey.isDown && !(paddleLeft.body.position.y < 20)) {
+                paddleLeft.body.velocity.y = -240;
+            }
         
-        if (upKey.isDown && !downKey.isDown) {
-            paddleRight.body.velocity.y = -240;
-        }
+            if (sKey.isDown && !wKey.isDown && !(paddleLeft.body.position.y > (h - 68))) {
+                paddleLeft.body.velocity.y = 240;
+            }
         
-        if (downKey.isDown && !upKey.isDown) {
-            paddleRight.body.velocity.y = 240;
+            if (upKey.isDown && !downKey.isDown && !(paddleRight.body.position.y < 20)) {
+                paddleRight.body.velocity.y = -240;
+            }
+        
+            if (downKey.isDown && !upKey.isDown && !(paddleRight.body.position.y > (h - 68))) {
+                paddleRight.body.velocity.y = 240;
+            }
+        
+            //HACKY CODE INCOMING
+            if (ball.body.position.x < 0 || ball.body.position.x > w || ball.body.position.y < 0 || ball.body.position.y > h) {
+                ball.body.position.x = w / 2;
+                ball.body.position.y = h / 2;
+            }
         }
     }
 };
