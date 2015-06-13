@@ -1,7 +1,8 @@
 window.onload = function () {
     'use strict';
     var game, w, h, paddleLeft, paddleRight, paddles, wallTop, wallBottom, walls,
-        goalLeft, goalRight, goals, ball;
+        goalLeft, goalRight, goals, ball,
+        wKey, sKey, upKey, downKey;
     w = 640;
     h = 480;
     game = new Phaser.Game(w, h, Phaser.AUTO, '', { preload: preload, create:       create, update: update });
@@ -16,6 +17,11 @@ window.onload = function () {
     function create() {
         game.physics.startSystem(Phaser.Physics.ARCADE);
         game.stage.backgroundColor = "#000000";
+        
+        wKey = game.input.keyboard.addKey(Phaser.Keyboard.W);
+        sKey = game.input.keyboard.addKey(Phaser.Keyboard.S);
+        upKey = game.input.keyboard.addKey(Phaser.Keyboard.UP);
+        downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
         
         paddles = game.add.group();
         paddles.enableBody = true;
@@ -38,6 +44,10 @@ window.onload = function () {
         wallBottom = game.add.sprite(w / 2, h - 8, 'wall');
         wallBottom.anchor.setTo(0.5);
         
+        walls.add(wallTop);
+        walls.add(wallBottom);
+        walls.setAll('body.immovable', true);
+        
         goals = game.add.group();
         goals.enableBody = true;
         
@@ -47,11 +57,34 @@ window.onload = function () {
         goalRight = game.add.sprite(w - 8, h / 2, 'goal');
         goalRight.anchor.setTo(0.5);
         
+        goals.add(goalLeft);
+        goals.add(goalRight);
+        goals.setAll('body.immovable', true);
+        
         ball = game.add.sprite(w / 2, h / 2, 'ball');
         ball.anchor.setTo(0.5);
         
     }
 
     function update() {
+        game.physics.arcade.collide(paddles, walls);
+        
+        paddles.setAll('body.velocity.y', 0);
+        
+        if (wKey.isDown && !sKey.isDown) {
+            paddleLeft.body.velocity.y = -240;
+        }
+        
+        if (sKey.isDown && !wKey.isDown) {
+            paddleLeft.body.velocity.y = 240;
+        }
+        
+        if (upKey.isDown && !downKey.isDown) {
+            paddleRight.body.velocity.y = -240;
+        }
+        
+        if (downKey.isDown && !upKey.isDown) {
+            paddleRight.body.velocity.y = 240;
+        }
     }
 };
