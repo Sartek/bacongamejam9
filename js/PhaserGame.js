@@ -5,7 +5,7 @@ window.onload = function () {
         scoreLeft, scoreRight, scoreDisplay, scoreStyle,
         instructionDisplay, instructionStyle,
         wKey, sKey, upKey, downKey, spacebarKey,
-        RNG_GOD, paused;
+        RNG_GOD, notAI, lagAI, framesAI, paused;
     
     function random(MIN, MAX) {
         var number = RNG_GOD.integerInRange(MIN, MAX);
@@ -21,7 +21,8 @@ window.onload = function () {
         if (!paused) {
             instructionDisplay.text = "";
         } else {
-            instructionDisplay = game.add.text(w / 2, h / 1.5, "Spacebar:pause/unpause W:LeftUp S:LeftDown UP:RightUp DOWN:RightDown", instructionStyle);
+            instructionDisplay.text = "Spacebar:pause/unpause W:Up S:Down";
+            //instructionDisplay = game.add.text(w / 2, h / 1.5, "Spacebar:pause/unpause W:LeftUp S:LeftDown UP:RightUp DOWN:RightDown", instructionStyle);
             instructionDisplay.anchor.setTo(0.5);
         }
     }
@@ -105,10 +106,14 @@ window.onload = function () {
         
         
         instructionStyle = { font: "18px Impact", fill: "#ffffff", align: "center" };
-        instructionDisplay = game.add.text(w / 2, h / 1.5, "Spacebar:pause/unpause W:LeftUp S:LeftDown UP:RightUp DOWN:RightDown", instructionStyle);
+        instructionDisplay = game.add.text(w / 2, h / 1.5, "Spacebar:pause/unpause W:Up S:Down", instructionStyle);
         instructionDisplay.anchor.setTo(0.5);
         
         paused = true;
+        notAI = false;
+        lagAI = 0;
+        framesAI = 6;
+        
         game.physics.arcade.isPaused = true;
         
         spacebarKey.onDown.add(function () {
@@ -139,7 +144,7 @@ window.onload = function () {
             game.physics.arcade.collide(ball, goals);
             game.physics.arcade.collide(ball, paddles);
         
-            paddles.setAll('body.velocity.y', 0);
+            //paddles.setAll('body.velocity.y', 0);
         
             if (wKey.isDown && !sKey.isDown && !(paddleLeft.body.position.y < 20)) {
                 paddleLeft.body.velocity.y = -240;
@@ -148,13 +153,90 @@ window.onload = function () {
             if (sKey.isDown && !wKey.isDown && !(paddleLeft.body.position.y > (h - 68))) {
                 paddleLeft.body.velocity.y = 240;
             }
-        
-            if (upKey.isDown && !downKey.isDown && !(paddleRight.body.position.y < 20)) {
-                paddleRight.body.velocity.y = -240;
+            
+            if (!wKey.isDown && paddleLeft.body.position.y > (h - 68)) {
+                paddleLeft.body.velocity.y = 0;
+            }
+            
+            if (!sKey.isDown && paddleLeft.body.position.y < 20) {
+                paddleLeft.body.velocity.y = 0;
+            }
+            
+            if (!wKey.isDown && !sKey.isDown) {
+                paddleLeft.body.velocity.y = 0;
             }
         
-            if (downKey.isDown && !upKey.isDown && !(paddleRight.body.position.y > (h - 68))) {
-                paddleRight.body.velocity.y = 240;
+            if (notAI) {
+                
+                if (upKey.isDown && !downKey.isDown && !(paddleRight.body.position.y < 20)) {
+                    paddleRight.body.velocity.y = -240;
+                }
+        
+                if (downKey.isDown && !upKey.isDown && !(paddleRight.body.position.y > (h - 68))) {
+                    paddleRight.body.velocity.y = 240;
+                }
+            
+                if (!upKey.isDown && paddleRight.body.position.y > (h - 68)) {
+                    paddleRight.body.velocity.y = 0;
+                }
+            
+                if (!downKey.isDown && paddleRight.body.position.y < 20) {
+                    paddleRight.body.velocity.y = 0;
+                }
+            
+                if (!upKey.isDown && !downKey.isDown) {
+                    paddleRight.body.velocity.y = 0;
+                }
+            } else {
+                
+                lagAI += 1;
+                if (lagAI > framesAI) {
+                    lagAI = 0;
+                }
+                var dirAI;
+                
+                var targety;
+                targety = ball.body.position.y + framesAI / 60 * ball.body.velocity.y;
+                //AI LOGIC
+                
+                if (targety > paddleRight.body.position.y) {
+                    dirAI = 1;
+                } else if (targety < paddleRight.body.position.y) {
+                    dirAI = -1;
+                } else {
+                    dirAI = 0;
+                }
+                
+                if (ball.body.velocity.x < 0) {
+                    dirAI = 0;
+                }
+                
+                //How many frames does the paddle need to move towards the ball to get to the ball target
+                
+                /*
+                if (ball.body.position.y > paddleRight.body.position.y) {
+                    dirAI = 1;
+                } else if (ball.body.position.y < paddleRight.body.position.y) {
+                    dirAI = -1;
+                } else {
+                    dirAI = 0;
+                }
+                */
+                
+                
+                if (dirAI == 1 && lagAI == framesAI) {
+                    paddleRight.body.velocity.y = 240;
+                } else if (dirAI == -1 && lagAI == framesAI) {
+                    paddleRight.body.velocity.y = -240;
+                } else if (dirAI == 0) {
+                    paddleRight.body.velocity.y = 0;
+                }
+                
+                if (((paddleRight.body.position.y > (h - 68)) && paddleRight.body.velocity.y > 0) || ((paddleRight.body.position.y < 20) && paddleRight.body.velocity.y < 0)) {
+                    paddleRight.body.velocity.y = 0;
+                }
+                console.log("Right Velocity" + paddleRight.body.velocity.y);
+                
             }
         
             //HACKY CODE INCOMING
